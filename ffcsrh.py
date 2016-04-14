@@ -75,3 +75,11 @@ class F_FCSR_H:
                 output[i] = (input[i] & 0xff) ^ self.filter_function()
 
         return output
+
+    def generate_byteseq(self, filename, length):
+        output = open(filename,"wb")
+        for i in range(length):
+            self.clock()
+            output.write((self.filter_function().to_bytes(1, byteorder="big")))
+        output.close()
+
