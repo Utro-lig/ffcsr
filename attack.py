@@ -1,13 +1,13 @@
 def main():
     bytedump = open("./dump", "rb")
-    bytestream = bytedump.read()
+    z = bytedump.read()
 
-    for i in range(len(bytestream)):
-        print(int(bytestream[i]))
-        W = [0] * 8
-        for j in range(8):
-            W[j] = 0
-
+    for t in range(len(z)):
+        for i in range(8):
+            Wi = [0] * 20
+            for k in range(20):
+                Wi[k] = 1 if ((z[t + k] & (((i - k) & 7) << 1)) != 0) else 0
+            print("W{}: {}".format(i, Wi))
     bytedump.close()
 
 if __name__ == "__main__":
