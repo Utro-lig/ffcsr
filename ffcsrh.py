@@ -29,7 +29,6 @@ class F_FCSR_H:
             shift = i * 8
             self.state |= (S[i] << shift)
 
-        print(self.state)
         self.carry = 0x00
         for _ in range(162):
             self.clock()

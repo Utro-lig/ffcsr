@@ -94,8 +94,20 @@ def main():
             Prows[k][i] = VS(V[i]) # Avoid calling P.matrix_from_rows later on
             j = (j - 1) % 8
         P[k] = MS(V)
-        
-    print("Searching ...")
+
+    # Precomputing Ci's
+    C = [VS() for i in range(8)]
+    print("Generating Ci matrices ...")
+    for i in range(8):
+        Ci = VS()
+        for k in range(20):
+            bit_index = (i - k) % 8
+            # Holy crap, fasten your seatbelt, we're computing the carries
+            C[i][k] = Prows[i][k]*Ci
+            if (k % 8) == ((i-2) % 8):
+                Ci[19 - ((k + bit_index) // 8)] = 1
+
+    print("Starting search")
     W = [VS()] * 8
     # Starting at 36430000 because this shit is fucking slow right now
     # Main loop
@@ -104,22 +116,16 @@ def main():
         M = [[]]*8
         # Computing Wi's
         for i in range(8):   
-            Ci = VS()
-            C = VS()
             for k in range(20):
                 bit_index = (i - k) % 8
                 W[i][k] = ((ord(z[t + k]) & (1 << bit_index)) >> bit_index)
-                # Holy crap, fasten your seatbelt, we're computing the carries
-                C[k] = Prows[i][k]*Ci
-                if (k % 8) == ((i-2) % 8):
-                    Ci[19 - ((k + bit_index) // 8)] = 1
                     
-            # Try to solve the associated system system of equations
+            # Try to solve the associated system of equations
             try:
-                particular_solution = P[i].solve_right(W[i]+C)
+                particular_solution = P[i].solve_right(W[i]+C[i])
                 # Look for other solutions, if there are any
                 for homogeneous_soln in P[i].right_kernel():
-                        M[i] = M[i] + [particular_solution + homogeneous_soln]
+                    M[i] = M[i] + [particular_solution + homogeneous_soln]
                 nb_solved += 1
             # No solution, skip this batch !
             except ValueError:
