@@ -13,7 +13,7 @@ def precompute_table(i, P, C):
         try:
             particular_solution = P[i].solve_right(bin_to_vec(k)+C[i])
             for homogeneous_solution in P[i].right_kernel():
-                TABLE[k] = TABLE[k] + [vec_to_bin(i, particular_solution + homogeneous_solution)]
+                TABLE[k] = TABLE[k] + [vec_to_partialstate(i, particular_solution + homogeneous_solution)]
         except ValueError:
             continue #TABLE[k] = []
 
@@ -34,7 +34,7 @@ def bin_to_vec(number):
     VS = VectorSpace(GF(2), 20)
     return VS(bin_to_array(number))
 
-def vec_to_bin(shift, v):
+def vec_to_partialstate(shift, v):
     result= 0
     for i in range(20):
         if v[i] != 0:
