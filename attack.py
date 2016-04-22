@@ -151,5 +151,5 @@ def main():
             return
     
 if __name__ == "__main__":
-    #Profile.run('main()')
-    main()
+    cProfile.run('main()')
+    #main()
