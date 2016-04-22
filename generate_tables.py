@@ -1,11 +1,10 @@
-import numpy
-import thread
-
-#TABLE = [[[]] * (2**20) for i in range(8)]
-
+import cPickle as pickle
+from multiprocessing import Pool
 
 def save_obj(obj, name):
-    numpy.save(name, obj)
+    fp = open(name, 'wb')
+    pickle.dump(obj, fp)
+    fp.close()
 
 def precompute_table(i, P, C):
     print("Generating TABLE{} ...".format(i))
@@ -90,7 +89,6 @@ if __name__ == '__main__':
                 Ci[19 - ((k + bit_index) // 8)] = 1
     
     # Starting table generation
+    pool = Pool()
     for i in range(8):
-        thread.start_new_thread(precompute_table, (i, P, C, ))
-    while True:
-        pass
+        pool.apply_async(precompute_table, [i, P, C])
