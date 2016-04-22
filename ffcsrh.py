@@ -1,3 +1,5 @@
+# coding: utf-8
+
 KEY_SIZE = 80
 MASK_80b = 0xffffffffffffffffffff
 
@@ -27,6 +29,7 @@ class F_FCSR_H:
             shift = i * 8
             self.state |= (S[i] << shift)
 
+        print(self.state)
         self.carry = 0x00
         for _ in range(162):
             self.clock()
@@ -76,10 +79,72 @@ class F_FCSR_H:
 
         return output
 
+    # Debuging & Attack related stuff
     def generate_byteseq(self, filename, length):
-        output = open(filename,"wb")
+        output = open(filename, "wb")
         for i in range(length):
             self.clock()
             output.write((self.filter_function().to_bytes(1, byteorder="big")))
         output.close()
 
+    def goto_ezero(self):
+        self.set_state(0b11110101100101101011011010000010000011010111011100000001011111010010011111111101011111011010000000001001001110001001010011110010011111111111111111111100)
+        self.set_carry(0b100000000000000000000000000000100000000000000000000001000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000010)
+
+    def print_z(self):
+        self.goto_ezero()
+        for i in range(20):
+            self.clock()
+            print("z(t+{})\t= ({})".format(i, format(self.filter_function(), '08b')))
+    
+    def print_M(self, i):
+        self.goto_ezero()
+        self.clock()
+        M = [0] * 20
+        for k in range(160):
+            if k % 8 == i:
+                M[19 - (k // 8)] = ((self.state & (1 << k)) >> k)
+        print("M{} = ({})".format(i, M))
+
+    def print_W(self, i):
+        self.goto_ezero()
+        W = [0] * 20
+        for k in range(20):
+            self.clock()
+            index = (i - k) % 8
+            W[k] = ((self.filter_function() & (1 << index)) >> index)
+        print("W{} = ({})".format(i, W))
+
+    def find_ezero(self, length):
+        print("Initial C: {}".format(self.carry))
+        zeroes = 0
+        maxz = 0
+        back_t = 0
+        back_state = 0
+        back_carry = 0
+        self.goto_ezero()
+        self.clock()
+        print(format(self.state, '08b'))
+        for i in range(length):
+            self.clock()
+            self.filter_function()
+            if self.carry == 0b10:
+                zeroes += 1
+                if zeroes >= 20:
+                    print("Ezero happens at t = {}".format(i+1))
+                    print("After t = {}, C = 0b10 {} times in a row".format(back_t, zeroes))
+                    print("State at t = {}:\n{}\n{}".format(back_t, bin(back_state), bin(back_carry)))
+            else:
+                if zeroes > maxz:
+                    maxz = zeroes
+                    print("Current maximum: {}".format(maxz))
+                zeroes = 0
+                back_t = i
+                back_state = self.state
+                back_carry = self.carry
+
+    def set_state(self, state):
+        self.state = state
+
+    def set_carry(self, carry):
+        self.carry = carry
