@@ -25,7 +25,7 @@ def bin_to_array(number):
     """ Number -> Binary representation """
     array = [0] * 20
     for i in range(20):
-        array[19-i] = number & 1
+        array[19 - i] = number & 1
         number = number >> 1
     return array
 
@@ -35,10 +35,10 @@ def bin_to_vec(number):
     return VS(bin_to_array(number))
 
 def vec_to_partialstate(shift, v):
-    result= 0
+    result = 0
     for i in range(20):
-        if v[i] != 0:
-            result = result | (int(v[i]) << shift)
+        if v[19 - i] != 0:
+            result = result | (1 << shift)
         shift += 8
     return result
 
@@ -92,3 +92,4 @@ if __name__ == '__main__':
     pool = Pool()
     for i in range(8):
         pool.apply_async(precompute_table, [i, P, C])
+

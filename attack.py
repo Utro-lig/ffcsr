@@ -111,7 +111,7 @@ def main():
     W = [VS()] * 8
     # Starting at 36430000 because this shit is fucking slow right now
     # Main loop
-    for t in range(36430000, size_of_dump):
+    for t in range(36434700, size_of_dump):
         nb_solved = 0
         M = [[]]*8
         # Computing Wi's
@@ -151,5 +151,5 @@ def main():
             return
     
 if __name__ == "__main__":
-    cProfile.run('main()')
-    #main()
+    #cProfile.run('main()')
+    main()

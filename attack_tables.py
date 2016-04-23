@@ -1,5 +1,5 @@
 import ffcsrh
-import cPickle
+import cPickle as pickle
 import cProfile
 
 def bin_to_array(number):
@@ -16,22 +16,22 @@ def bin_to_vec(number):
     return VS(bin_to_array(number))
 
 def vec_to_bin(v):
-        result= 0
-        for i in range(20):
-            if v[i] != 0:
-                result = result | (int(v[19 - i]) << i)
-        return result
+    result= 0
+    for i in range(20):
+        if v[19 - i] != 0:
+            result = result | (1 << i)
+    return result
 
 def rebuild_state(M):
     """
     Converts Mi matrices to an integer representation of the main register
     """
     result = 0
-    for i in range(160):
-        result = result | (int(M[i % 8][19 - (i // 8)]) << i)
+    for i in range(8):
+        result = result | M[i]
     return result
 
-def try_paths(cipher, t, z, M, P=[None]*8, depth=0):
+def try_paths(cipher, t, z, M, P=[0]*8, depth=0):
     """
     Tests every solution given by Mi matrices
     """
@@ -92,7 +92,7 @@ def main():
     # Main loop
     for t in range(36430000, size_of_dump):
         nb_solved = 0
-        M = [[]]*8
+        M = [[]] * 8
         # Computing Wi's
         for i in range(8):   
             for k in range(20):
@@ -127,5 +127,5 @@ def main():
             return
     
 if __name__ == "__main__":
-    cProfile.run('main()')
-    #main()
+    #cProfile.run('main()')
+    main()
