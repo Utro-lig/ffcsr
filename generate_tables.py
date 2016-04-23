@@ -1,6 +1,8 @@
 import cPickle as pickle
 from multiprocessing import Pool
 
+TABLES_PATH = "./"
+
 def save_obj(obj, name):
     fp = open(name, 'wb')
     pickle.dump(obj, fp)
@@ -15,10 +17,10 @@ def precompute_table(i, P, C):
             for homogeneous_solution in P[i].right_kernel():
                 TABLE[k] = TABLE[k] + [vec_to_partialstate(i, particular_solution + homogeneous_solution)]
         except ValueError:
-            continue #TABLE[k] = []
+            continue
 
     print("Saving TABLE{} ...".format(i))
-    save_obj(TABLE, "TABLE{}".format(i))
+    save_obj(TABLE, TABLES_PATH + "TABLE{}".format(i))
     print("TABLE{} generated !".format(i))
 
 def bin_to_array(number):

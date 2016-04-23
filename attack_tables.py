@@ -1,6 +1,5 @@
 import ffcsrh
 import pickle
-import cProfile
 
 DUMP_PATH = "./"
 TABLES_PATH = "./"
@@ -17,7 +16,6 @@ def try_paths(t, z, M, P=[0]*8, depth=0):
             state = state | P[i]
         ffcsr.set_state(state)
         ffcsr.set_carry(0b10)
-        correct_state = True
         for i in range(22):
             if z[t + i] != ffcsr.filter_function():
                 return None
@@ -70,7 +68,7 @@ def main():
         for i in range(8):   
             for k in range(20):
                 bit_index = (i - k) % 8
-                W[i] = W[i] | (((z[t + k] & (1 << bit_index)) >> bit_index) << (19 -k))
+                W[i] = W[i] | (((z[t + k] & (1 << bit_index)) >> bit_index) << (19 - k))
             # Try to solve the associated system of equations
             M[i] = TABLE[i][W[i]]
             if len(M[i]) > 0:
@@ -99,5 +97,4 @@ def main():
             return
     
 if __name__ == "__main__":
-    cProfile.run('main()')
-    #main()
+    main()

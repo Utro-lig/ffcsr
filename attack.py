@@ -1,5 +1,6 @@
 import ffcsrh
-import cProfile
+
+DUMP_PATH = "./"
 
 ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
 
@@ -62,7 +63,7 @@ def main():
     Main function
     """
     # Reading the output values of our ffcsr from a file
-    bytedump = open("./dump", "rb")
+    bytedump = open(DUMP_PATH + "dump", "rb")
     z = bytedump.read()
     bytedump.close()
     size_of_dump = len(z)
@@ -152,5 +153,4 @@ def main():
             return
     
 if __name__ == "__main__":
-    #cProfile.run('main()')
     main()

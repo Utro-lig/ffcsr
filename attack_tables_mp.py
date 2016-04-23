@@ -15,7 +15,6 @@ def try_paths(ffcsr, t, z, M, P=[0]*8, depth=0):
             state = state | P[i]
         ffcsr.set_state(state)
         ffcsr.set_carry(0b10)
-        correct_state = True
         for i in range(22):
             if z[t + i] != ffcsr.filter_function():
                 return None
@@ -46,6 +45,13 @@ def load_table(name):
 table_lock = mp.Lock()
 
 def find_solutions(z, ffcsr, r):
+    """
+    Note: The way tables are loaded is currently really bad
+    When there are too many cores, multiprocessing too much
+    becomes less effecient because of the intial overhead
+    TODO: Find a way to load the tables only once and run
+    the workers on these unique copies
+    """
     TABLE = [[] for i in range(8)]
     with table_lock:
         for i in range(8):
