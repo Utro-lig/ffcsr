@@ -37,8 +37,7 @@ def bin_to_vec(number):
 def vec_to_partialstate(shift, v):
     result = 0
     for i in range(20):
-        if v[19 - i] != 0:
-            result = result | (1 << shift)
+        result = result | (int(v[19 - i]) << shift)
         shift += 8
     return result
 
@@ -46,7 +45,7 @@ def rotate_left(array, n):
     """ Array rotation """
     return array[n:] + array[:n]
 
-if __name__ == '__main__':
+def main():
     # Initializing our vector and matrix spaces
     VS = VectorSpace(GF(2), 20)
     MS = MatrixSpace(GF(2), 20, 20)
@@ -93,3 +92,5 @@ if __name__ == '__main__':
     for i in range(8):
         pool.apply_async(precompute_table, [i, P, C])
 
+if __name__ == '__main__':
+    main()

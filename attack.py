@@ -1,6 +1,8 @@
 import ffcsrh
 import cProfile
 
+ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
+
 def bin_to_array(number):
     """ Number -> Binary representation """
     array = [0] * 20
@@ -53,7 +55,6 @@ def test_solutions(t, z, M):
     """
     Wrapper for our recursive function
     """
-    ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
     return try_paths(ffcsr, t, z, M) 
 
 def main():
