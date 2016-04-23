@@ -66,36 +66,41 @@ def load_table(name):
 
     return table
 
-def find_solution(TABLE, z, ffcsr, t):
-    W = [[] * 20 for i in range(8)]
-    M = [[] for i in range(8)]
-    # Computing Wi's
-    for i in range(8):
-        for k in range(20):
-            bit_index = (i - k) % 8
-            W[i][k] = ((ord(z[t + k]) & (1 << bit_index)) >> bit_index)
+def find_solutions(TABLE, z, ffcsr, r):
+    nb_solved = 0
+    for t in r:
+        W = [[] * 20 for i in range(8)]
+        M = [[] for i in range(8)]
+        # Computing Wi's
+        for i in range(8):
+            for k in range(20):
+                bit_index = (i - k) % 8
+                W[i][k] = ((ord(z[t + k]) & (1 << bit_index)) >> bit_index)
 
-        # Try to solve the associated system of equations
-        M[i] = TABLE[i][vec_to_bin(W[i])]
-        if len(M[i]) == 0:
+            # Try to solve the associated system of equations
+            M[i] = TABLE[i][vec_to_bin(W[i])]
+            if len(M[i]) == 0:
+                nb_solved += 1
+            else:
+                break
+
+        if nb_solved == 8:
+            # We found something interesting
+            print("Found potential Ezero at t = {}".format(t))
+            state = test_solutions(ffcsr, t, z, M)
+            if state == None:
+                break
+            # Master has presented Dobby with a solution
+            # Dobby is free \o/
+            print("\nA solution has been found:")
+            print("M({}) = {}".format(t, hex(state)))
+            q = 0x15d30bbfe4cc33f8b0c47b9155e8dab207ba84a9b
+            # p(t) = M + 2*C
+            pt = IntegerModRing(q)(state + 4)
+            # p(0) = p(t) * 2^t mod q
+            p0 = IntegerModRing(q)(pt * (2**(t+163)))
+            print("M(0) = {}".format(hex(int(p0))))
             return
-
-    # We found something interesting
-    print("Found potential Ezero at t = {}".format(t))
-    state = test_solutions(ffcsr, t, z, M)
-    if state == None:
-        return
-    # Master has presented Dobby with a solution
-    # Dobby is free \o/
-    print("\nA solution has been found:")
-    print("M({}) = {}".format(t, hex(state)))
-    q = 0x15d30bbfe4cc33f8b0c47b9155e8dab207ba84a9b
-    # p(t) = M + 2*C
-    pt = IntegerModRing(q)(state + 4)
-    # p(0) = p(t) * 2^t mod q
-    p0 = IntegerModRing(q)(pt * (2**(t+163)))
-    print("M(0) = {}".format(hex(int(p0))))
-
 
 def main():
     """
@@ -108,7 +113,7 @@ def main():
 
     # Reading the output values of our ffcsr from a file
     bytedump = open("./dump", "rb")
-    z = manager.list(bytedump.read())
+    z = bytedump.read()
     bytedump.close()
     size_of_dump = len(z)
 
@@ -120,7 +125,7 @@ def main():
     sub_start = 0
     sub_size = size_of_dump // cpu_count
     for _ in range(cpu_count):
-        pool.apply_async(find_solution, [TABLE, z, ffcsr, range(sub_start, sub_start + sub_size)])
+        pool.apply_async(find_solutions, [TABLE, z, ffcsr, range(sub_start, sub_start + sub_size)])
         sub_start += sub_size
 
     
