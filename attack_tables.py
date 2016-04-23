@@ -2,23 +2,19 @@ import ffcsrh
 import pickle
 import cProfile
 
-ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
+DUMP_PATH = "./"
+TABLES_PATH = "./"
 
-def rebuild_state(M):
-    """
-    Converts partial states Mi to an integer representation of the main register
-    """
-    result = 0
-    for i in range(8):
-        result = result | M[i]
-    return result
+ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
 
 def try_paths(t, z, M, P=[0]*8, depth=0):
     """
     Tests every solution given by Mi matrices
     """
     if depth >= len(M):
-        state = rebuild_state(P)
+        state = 0
+        for i in range(8):
+            state = state | P[i]
         ffcsr.set_state(state)
         ffcsr.set_carry(0b10)
         correct_state = True
@@ -53,7 +49,7 @@ def main():
     Main function
     """
     # Reading the output values of our ffcsr from a file
-    bytedump = open("./dump", "rb")
+    bytedump = open(DUMP_PATH + "dump", "rb")
     z = bytedump.read()
     bytedump.close()
     size_of_dump = len(z)
@@ -61,12 +57,12 @@ def main():
     print("Loading tables ...")
     TABLE = [[[]] * 2**(20) for i in range(8)]
     for i in range(8):
-        TABLE[i] = load_table("./TABLE{}".format(i))
+        TABLE[i] = load_table(TABLES_PATH + "TABLE{}".format(i))
         print("TABLE{} loaded !".format(i))
     
     print("Starting search")
     # Main loop
-    for t in range(36434000, size_of_dump):
+    for t in range(0, size_of_dump):
         nb_solved = 0
         M = [[]] * 8
         # Computing Wi's
@@ -85,7 +81,7 @@ def main():
 
         # We found something interesting
         if nb_solved == 8:
-            print("Found potential Ezero at t = {}".format(t))
+            #print("Found potential Ezero at t = {}".format(t))
             state = test_solutions(t, z, M)
             if state == None:
                 #print("Not good, continuing ...")
@@ -103,5 +99,5 @@ def main():
             return
     
 if __name__ == "__main__":
-    #cProfile.run('main()')
-    main()
+    cProfile.run('main()')
+    #main()
