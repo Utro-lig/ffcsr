@@ -1,31 +1,12 @@
 import ffcsrh
-import cPickle as pickle
+import pickle
 import cProfile
 
 ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
 
-def bin_to_array(number):
-    """ Number -> Binary representation """
-    array = [0] * 20
-    for i in range(20):
-        array[19-i] = number & 1
-        number = number >> 1
-    return array
-
-def bin_to_vec(number):
-    """ Number -> Element of vector space over F2 """
-    VS = VectorSpace(GF(2), 20)
-    return VS(bin_to_array(number))
-
-def vec_to_bin(v):
-    result= 0
-    for i in range(20):
-        result = result | (int(v[19 - i]) << i)
-    return result
-
 def rebuild_state(M):
     """
-    Converts Mi matrices to an integer representation of the main register
+    Converts partial states Mi to an integer representation of the main register
     """
     result = 0
     for i in range(8):
@@ -42,7 +23,7 @@ def try_paths(t, z, M, P=[0]*8, depth=0):
         ffcsr.set_carry(0b10)
         correct_state = True
         for i in range(22):
-            if ord(z[t + i]) != ffcsr.filter_function():
+            if z[t + i] != ffcsr.filter_function():
                 return None
             ffcsr.clock()
         return state
@@ -77,28 +58,25 @@ def main():
     bytedump.close()
     size_of_dump = len(z)
 
-    # Initializing our vector and matrix spaces
-    VS = VectorSpace(GF(2), 20)
-
     print("Loading tables ...")
     TABLE = [[[]] * 2**(20) for i in range(8)]
     for i in range(8):
         TABLE[i] = load_table("./TABLE{}".format(i))
+        print("TABLE{} loaded !".format(i))
     
     print("Starting search")
-    W = [VS()] * 8
     # Main loop
-    for t in range(0, size_of_dump):
+    for t in range(36434000, size_of_dump):
         nb_solved = 0
         M = [[]] * 8
         # Computing Wi's
+        W = [0] * 8
         for i in range(8):   
             for k in range(20):
                 bit_index = (i - k) % 8
-                W[i][k] = ((ord(z[t + k]) & (1 << bit_index)) >> bit_index)
-                    
+                W[i] = W[i] | (((z[t + k] & (1 << bit_index)) >> bit_index) << (19 -k))
             # Try to solve the associated system of equations
-            M[i] = TABLE[i][vec_to_bin(W[i])]
+            M[i] = TABLE[i][W[i]]
             if len(M[i]) > 0:
                 nb_solved += 1
             # No solution, skip this batch !
@@ -118,10 +96,10 @@ def main():
             print("M({}) = {}".format(t, hex(state)))
             q = 0x15d30bbfe4cc33f8b0c47b9155e8dab207ba84a9b
             # p(t) = M + 2*C
-            pt = IntegerModRing(q)(state + 4)
+            pt = state + 4
             # p(0) = p(t) * 2^t mod q
-            p0 = IntegerModRing(q)(pt * (2**(t+163)))
-            print("M(0) = {}".format(hex(int(p0))))
+            p0 = (pt * (2**(t+163))) % q
+            print("M(0) = {}".format(hex(p0)))
             return
     
 if __name__ == "__main__":

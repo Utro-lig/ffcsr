@@ -1,6 +1,6 @@
 import ffcsrh
-import cPickle as pickle
 import cProfile
+import pickle
 import multiprocessing as mp
 
 def bin_to_array(number):
@@ -41,7 +41,7 @@ def try_paths(ffcsr, t, z, M, P=[0]*8, depth=0):
         ffcsr.set_carry(0b10)
         correct_state = True
         for i in range(22):
-            if ord(z[t + i]) != ffcsr.filter_function():
+            if z[t + i] != ffcsr.filter_function():
                 return None
             ffcsr.clock()
         return state
@@ -66,20 +66,24 @@ def load_table(name):
 
     return table
 
-def find_solutions(TABLE, z, ffcsr, r):
-    nb_solved = 0
+def find_solutions(z, ffcsr, r):
+    TABLE = [[] for i in range(8)]
+    for i in range(8):
+        TABLE[i] = load_table("./TABLE{}".format(i))
+    print("Tables loaded")
     for t in r:
-        W = [[] * 20 for i in range(8)]
+        nb_solved = 0
+        W = [0] * 8
         M = [[] for i in range(8)]
         # Computing Wi's
         for i in range(8):
             for k in range(20):
                 bit_index = (i - k) % 8
-                W[i][k] = ((ord(z[t + k]) & (1 << bit_index)) >> bit_index)
+                W[i] = W[i] | (((z[t + k] & (1 << bit_index)) >> bit_index) << (19 - k))
 
             # Try to solve the associated system of equations
-            M[i] = TABLE[i][vec_to_bin(W[i])]
-            if len(M[i]) == 0:
+            M[i] = TABLE[i][W[i]]
+            if len(M[i]) > 0:
                 nb_solved += 1
             else:
                 break
@@ -89,44 +93,62 @@ def find_solutions(TABLE, z, ffcsr, r):
             print("Found potential Ezero at t = {}".format(t))
             state = test_solutions(ffcsr, t, z, M)
             if state == None:
-                break
+                continue
             # Master has presented Dobby with a solution
             # Dobby is free \o/
             print("\nA solution has been found:")
             print("M({}) = {}".format(t, hex(state)))
             q = 0x15d30bbfe4cc33f8b0c47b9155e8dab207ba84a9b
             # p(t) = M + 2*C
-            pt = IntegerModRing(q)(state + 4)
+            pt = state + 4
             # p(0) = p(t) * 2^t mod q
-            p0 = IntegerModRing(q)(pt * (2**(t+163)))
-            print("M(0) = {}".format(hex(int(p0))))
+            p0 = (pt * (2**(t+163))) % q
+            print("M(0) = {}".format(hex(p0)))
             return
+
+class Worker():
+    def __init__(self):
+        self.pool = mp.Pool()
+        bytedump = open("./dump", "rb")
+        self.z = bytedump.read()
+        bytedump.close()
+        self.ffcsr = ffcsrh.F_FCSR_H(0, 0)
+
+    def callback(self, result):
+        if result:
+            print("Solution found! Yay!")
+            self.pool.terminate()
+
+    def do_job(self):
+        size_of_dump = len(self.z)
+        sub_size = size_of_dump // mp.cpu_count()
+        results = [self.pool.apply_async(find_solutions, [self.z, self.ffcsr, range(i, i + sub_size)]) for i in range(0, size_of_dump, sub_size)]
+        self.pool.close()
+        self.pool.join()
 
 def main():
     """
     Main function
     """
-    pool = mp.Pool()
-    cpu_count = mp.cpu_count()
+    #pool = mp.Pool()
+    #cpu_count = mp.cpu_count()
     
-    ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
+    #ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
 
     # Reading the output values of our ffcsr from a file
-    bytedump = open("./dump", "rb")
-    z = bytedump.read()
-    bytedump.close()
-    size_of_dump = len(z)
+    #bytedump = open("./dump", "rb")
+    #z = bytedump.read()
+    #bytedump.close()
+    #size_of_dump = len(z)
 
-    print("Loading tables ...")
-    results = [pool.apply_async(load_table, ["./TABLE{}".format(i)]) for i in range(8)]
-    TABLE = [result.get() for result in results]
-    # Let's go
-    print("Starting search")
-    sub_start = 0
-    sub_size = size_of_dump // cpu_count
-    for _ in range(cpu_count):
-        pool.apply_async(find_solutions, [TABLE, z, ffcsr, range(sub_start, sub_start + sub_size)])
-        sub_start += sub_size
+    #sub_size = size_of_dump // cpu_count
+    #find_solutions(TABLE, z, ffcsr, range(36430000, size_of_dump))
+    #result = pool.apply_async(find_solutions, [z, ffcsr, range(36430000, size_of_dump)])
+    #print(result.get())
+    worker = Worker()
+    worker.do_job()
+    #results = [pool.apply_async(find_solutions, [z, ffcsr, range(i, i + sub_size)]) for i in range(0, size_of_dump, sub_size)]
+    
 
     
 if __name__ == "__main__":
