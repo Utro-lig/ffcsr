@@ -1,11 +1,7 @@
 import ffcsrh
 import cPickle as pickle
 import cProfile
-from multiprocessing import Pool
-
-ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
-TABLE = [[[]] * 2**(20) for i in range(8)]
-z = []
+import multiprocessing as mp
 
 def bin_to_array(number):
     """ Number -> Binary representation """
@@ -23,7 +19,7 @@ def bin_to_vec(number):
 def vec_to_bin(v):
     result= 0
     for i in range(20):
-        result = result | (int(v[19 - i]) << i)
+        result = result | (v[19 - i] << i)
     return result
 
 def rebuild_state(M):
@@ -35,7 +31,7 @@ def rebuild_state(M):
         result = result | M[i]
     return result
 
-def try_paths(t, z, M, P=[0]*8, depth=0):
+def try_paths(ffcsr, t, z, M, P=[0]*8, depth=0):
     """
     Tests every solution given by Mi matrices
     """
@@ -52,16 +48,16 @@ def try_paths(t, z, M, P=[0]*8, depth=0):
     else:
         for i in range(len(M[depth])):
             P[depth] = M[depth][i]
-            result = try_paths(t, z, M, P, depth + 1)
+            result = try_paths(ffcsr, t, z, M, P, depth + 1)
             if result != None:
                 return result
         return None
 
-def test_solutions(t, z, M):
+def test_solutions(ffcsr, t, z, M):
     """
     Wrapper for our recursive function
     """
-    return try_paths(t, z, M) 
+    return try_paths(ffcsr, t, z, M) 
 
 def load_table(name):
     fp = open(name, 'rb')
@@ -70,9 +66,9 @@ def load_table(name):
 
     return table
 
-def find_solution(t):
-    W = [VS()] * 8
-    M = [[]] * 8
+def find_solution(TABLE, z, ffcsr, t):
+    W = [[] * 20 for i in range(8)]
+    M = [[] for i in range(8)]
     # Computing Wi's
     for i in range(8):
         for k in range(20):
@@ -86,7 +82,7 @@ def find_solution(t):
 
     # We found something interesting
     print("Found potential Ezero at t = {}".format(t))
-    state = test_solutions(t, z, M)
+    state = test_solutions(ffcsr, t, z, M)
     if state == None:
         return
     # Master has presented Dobby with a solution
@@ -105,24 +101,28 @@ def main():
     """
     Main function
     """
+    pool = mp.Pool()
+    cpu_count = mp.cpu_count()
+    
+    ffcsr = ffcsrh.F_FCSR_H(0, 0) # Better avoid creating this more than one time
+
     # Reading the output values of our ffcsr from a file
     bytedump = open("./dump", "rb")
-    z = bytedump.read()
+    z = manager.list(bytedump.read())
     bytedump.close()
     size_of_dump = len(z)
 
-    pool = Pool()
-
-    # Initializing our vector and matrix spaces
-    VS = VectorSpace(GF(2), 20)
-
     print("Loading tables ...")
-    for i in range(8):
-        TABLE[i] = load_table("./TABLE{}".format(i))
-    
+    results = [pool.apply_async(load_table, ["./TABLE{}".format(i)]) for i in range(8)]
+    TABLE = [result.get() for result in results]
     # Let's go
     print("Starting search")
-    pool.map(find_solution, range(0, size_of_dump))
+    sub_start = 0
+    sub_size = size_of_dump // cpu_count
+    for _ in range(cpu_count):
+        pool.apply_async(find_solution, [TABLE, z, ffcsr, range(sub_start, sub_start + sub_size)])
+        sub_start += sub_size
+
     
 if __name__ == "__main__":
     #cProfile.run('main()')
