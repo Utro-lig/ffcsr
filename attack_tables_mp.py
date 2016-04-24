@@ -41,10 +41,7 @@ def load_table(name):
 
     return table
 
-# Avoid loading tables all at once
-table_lock = mp.Lock()
-
-def find_solutions(z, ffcsr, r):
+def find_solutions(found, z, ffcsr, r):
     """
     Note: The way tables are loaded is currently really bad
     When there are too many cores, multiprocessing too much
@@ -53,9 +50,8 @@ def find_solutions(z, ffcsr, r):
     the workers on these unique copies
     """
     TABLE = [[] for i in range(8)]
-    with table_lock:
-        for i in range(8):
-            TABLE[i] = load_table(TABLES_PATH + "TABLE{}".format(i))
+    for i in range(8):
+        TABLE[i] = load_table(TABLES_PATH + "TABLE{}".format(i))
     print("Now searching between {} and {} ...".format(r.start, r.stop))
     for t in r:
         nb_solved = 0
@@ -89,36 +85,32 @@ def find_solutions(z, ffcsr, r):
             # p(0) = p(t) * 2^t mod q
             p0 = (pt * (2**(t+163))) % q
             print("M(0) = {}".format(hex(p0)))
+            found.set()
             return True
     return False
-
-class Worker():
-    def __init__(self):
-        self.pool = mp.Pool()
-        bytedump = open(DUMP_PATH + "dump", "rb")
-        self.z = bytedump.read()
-        bytedump.close()
-        self.ffcsr = ffcsrh.F_FCSR_H(0, 0)
-
-    def callback(self, result):
-        if result:
-            # Result is True so we're done
-            self.pool.terminate()
-
-    def do_job(self):
-        size_of_dump = len(self.z)
-        sub_size = size_of_dump // mp.cpu_count()
-        for i in range(0, size_of_dump, sub_size):
-            self.pool.apply_async(find_solutions, [self.z, self.ffcsr, range(i, i + sub_size)])
-        self.pool.close()
-        self.pool.join()
 
 def main():
     """
     Main function
     """
-    worker = Worker()
-    worker.do_job()
+    pool = mp.Pool()
+    bytedump = open(DUMP_PATH + "dump", "rb")
+    z = bytedump.read()
+    bytedump.close()
+
+    ffcsr = ffcsrh.F_FCSR_H(0, 0)
+    manager = mp.Manager()
+    found_solution = manager.Event()
+    size_of_dump = len(z)
+
+    sub_size = size_of_dump // mp.cpu_count()
+    for i in range(0, size_of_dump, sub_size):
+        pool.apply_async(find_solutions, [found_solution, z, ffcsr, range(i, i + sub_size)])
+
+    pool.close()
+    found_solution.wait()
+    pool.terminate()
+
     
 if __name__ == "__main__":
     main()
